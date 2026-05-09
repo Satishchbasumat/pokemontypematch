@@ -1,0 +1,1012 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pokémon Type Codex — The Logic Behind the Battle</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600&family=Crimson+Pro:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --fire: #FF6B35;
+  --water: #4FC3F7;
+  --grass: #66BB6A;
+  --electric: #FFD54F;
+  --ice: #80DEEA;
+  --fighting: #EF5350;
+  --poison: #CE93D8;
+  --ground: #BCAAA4;
+  --flying: #90CAF9;
+  --psychic: #F48FB1;
+  --bug: #AED581;
+  --rock: #A1887F;
+  --ghost: #7986CB;
+  --dragon: #7C4DFF;
+  --dark: #546E7A;
+  --steel: #B0BEC5;
+  --fairy: #F8BBD9;
+  --normal: #E0E0E0;
+  --bg: #060912;
+  --surface: rgba(255,255,255,0.04);
+  --surface2: rgba(255,255,255,0.08);
+  --border: rgba(255,255,255,0.1);
+  --text: #E8EAF6;
+  --muted: rgba(232,234,246,0.5);
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+
+html{scroll-behavior:smooth;}
+
+body{
+  font-family:'Rajdhani',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  overflow-x:hidden;
+  cursor:none;
+}
+
+/* CUSTOM CURSOR */
+.cursor{position:fixed;width:12px;height:12px;border-radius:50%;background:#FFD54F;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform 0.1s,width 0.2s,height 0.2s;mix-blend-mode:difference;}
+.cursor-ring{position:fixed;width:36px;height:36px;border-radius:50%;border:1.5px solid rgba(255,213,79,0.5);pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:transform 0.15s ease,width 0.2s,height 0.2s;}
+
+/* PARTICLES */
+#particles{position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:0;overflow:hidden;}
+.particle{position:absolute;border-radius:50%;animation:float linear infinite;}
+@keyframes float{0%{transform:translateY(100vh) rotate(0deg);opacity:0;}10%{opacity:1;}90%{opacity:1;}100%{transform:translateY(-10vh) rotate(720deg);opacity:0;}}
+
+/* POKEBALL LOADER */
+#loader{
+  position:fixed;inset:0;z-index:10000;
+  background:var(--bg);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2rem;
+  transition:opacity 0.8s;
+}
+.pokeball{width:80px;height:80px;position:relative;animation:spin 1s linear infinite;}
+.pokeball::before,.pokeball::after{content:'';position:absolute;inset:0;border-radius:50%;}
+.pokeball::before{background:linear-gradient(180deg,#EF5350 50%,#fff 50%);border:4px solid #333;}
+.pokeball::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:20px;height:20px;border-radius:50%;background:#fff;border:4px solid #333;box-shadow:0 0 0 4px #fff, 0 0 0 8px #333;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.loader-text{font-family:'Orbitron',monospace;font-size:0.8rem;letter-spacing:0.3em;color:var(--muted);animation:pulse 1.2s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:0.4;}50%{opacity:1;}}
+
+/* NAV */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  padding:1rem 2rem;
+  display:flex;align-items:center;justify-content:space-between;
+  background:rgba(6,9,18,0.7);
+  backdrop-filter:blur(20px);
+  border-bottom:1px solid var(--border);
+}
+.nav-logo{font-family:'Orbitron',monospace;font-size:1rem;font-weight:900;letter-spacing:0.1em;background:linear-gradient(135deg,#FFD54F,#FF6B35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.nav-links{display:flex;gap:2rem;list-style:none;}
+.nav-links a{color:var(--muted);text-decoration:none;font-size:0.85rem;letter-spacing:0.1em;text-transform:uppercase;transition:color 0.2s;}
+.nav-links a:hover{color:var(--text);}
+.music-btn{
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:0.4rem 1rem;border-radius:2rem;
+  font-family:'Rajdhani',sans-serif;font-size:0.8rem;letter-spacing:0.1em;
+  cursor:pointer;transition:all 0.2s;display:flex;align-items:center;gap:0.5rem;
+}
+.music-btn:hover{background:var(--surface2);border-color:rgba(255,213,79,0.4);}
+
+/* HERO */
+#hero{
+  min-height:100vh;position:relative;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:6rem 2rem 4rem;overflow:hidden;
+}
+.hero-bg{
+  position:absolute;inset:0;
+  background:radial-gradient(ellipse 80% 60% at 50% 40%, rgba(124,77,255,0.15) 0%, transparent 70%),
+             radial-gradient(ellipse 40% 40% at 80% 60%, rgba(255,107,53,0.1) 0%, transparent 60%),
+             radial-gradient(ellipse 40% 40% at 20% 70%, rgba(79,195,247,0.1) 0%, transparent 60%);
+}
+.hero-orbs{position:absolute;inset:0;overflow:hidden;}
+.orb{position:absolute;border-radius:50%;filter:blur(60px);animation:orb-drift ease-in-out infinite alternate;}
+@keyframes orb-drift{0%{transform:translate(0,0);}100%{transform:translate(30px,-20px);}}
+
+.hero-badge{
+  display:inline-flex;align-items:center;gap:0.5rem;
+  background:var(--surface);border:1px solid rgba(255,213,79,0.3);
+  padding:0.4rem 1.2rem;border-radius:2rem;
+  font-size:0.75rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--electric);
+  margin-bottom:2rem;animation:fadeUp 0.6s 0.3s both;
+}
+.hero-title{
+  font-family:'Orbitron',monospace;
+  font-size:clamp(2rem,6vw,4.5rem);
+  font-weight:900;line-height:1.1;
+  background:linear-gradient(135deg,#fff 0%,#E8EAF6 40%,#FFD54F 70%,#FF6B35 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  margin-bottom:1.5rem;
+  animation:fadeUp 0.6s 0.5s both;
+}
+.hero-sub{
+  font-family:'Crimson Pro',serif;
+  font-size:clamp(1rem,2.5vw,1.4rem);
+  color:var(--muted);max-width:650px;line-height:1.7;
+  margin-bottom:3rem;animation:fadeUp 0.6s 0.7s both;
+}
+.cta-btn{
+  display:inline-flex;align-items:center;gap:0.75rem;
+  background:linear-gradient(135deg,#7C4DFF,#FF6B35);
+  color:#fff;padding:1rem 2.5rem;border-radius:3rem;
+  font-family:'Orbitron',monospace;font-size:0.85rem;letter-spacing:0.1em;
+  text-decoration:none;border:none;cursor:pointer;
+  box-shadow:0 0 40px rgba(124,77,255,0.4);
+  transition:all 0.3s;animation:fadeUp 0.6s 0.9s both;
+  position:relative;overflow:hidden;
+}
+.cta-btn::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,0.2),transparent);opacity:0;transition:opacity 0.3s;}
+.cta-btn:hover{transform:translateY(-2px);box-shadow:0 0 60px rgba(124,77,255,0.6);}
+.cta-btn:hover::before{opacity:1;}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+
+.scroll-hint{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:0.5rem;color:var(--muted);font-size:0.7rem;letter-spacing:0.2em;animation:bob 2s ease-in-out infinite;}
+@keyframes bob{0%,100%{transform:translateX(-50%) translateY(0);}50%{transform:translateX(-50%) translateY(6px);}}
+.scroll-arrow{width:20px;height:20px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:rotate(45deg);}
+
+/* SECTIONS */
+section{position:relative;z-index:1;padding:5rem 2rem;}
+.section-label{font-size:0.7rem;letter-spacing:0.3em;text-transform:uppercase;color:var(--electric);margin-bottom:0.75rem;}
+.section-title{font-family:'Orbitron',monospace;font-size:clamp(1.5rem,4vw,2.5rem);font-weight:700;margin-bottom:1rem;line-height:1.2;}
+.section-desc{color:var(--muted);font-family:'Crimson Pro',serif;font-size:1.1rem;max-width:600px;line-height:1.7;margin-bottom:3rem;}
+
+/* TYPE GRID */
+.type-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(140px,1fr));
+  gap:1rem;max-width:1100px;margin:0 auto;
+}
+.type-card{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:1rem;
+  padding:1.5rem 1rem;
+  text-align:center;
+  cursor:pointer;
+  transition:all 0.3s;
+  position:relative;overflow:hidden;
+}
+.type-card::before{
+  content:'';position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 0%, var(--type-color,#fff) 0%, transparent 70%);
+  opacity:0;transition:opacity 0.3s;
+}
+.type-card:hover::before{opacity:0.12;}
+.type-card:hover{transform:translateY(-4px);border-color:var(--type-color,#fff);box-shadow:0 8px 30px rgba(0,0,0,0.3),0 0 20px rgba(var(--type-rgb,255,255,255),0.2);}
+.type-card.active{border-color:var(--type-color,#fff);box-shadow:0 0 30px rgba(0,0,0,0.5),inset 0 0 20px rgba(var(--type-rgb,255,255,255),0.05);}
+.type-emoji{font-size:2rem;margin-bottom:0.5rem;display:block;}
+.type-name{font-family:'Orbitron',monospace;font-size:0.7rem;letter-spacing:0.1em;font-weight:700;color:var(--type-color,#fff);}
+
+/* TYPE DETAIL PANEL */
+#type-detail{
+  max-width:900px;margin:2rem auto 0;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:1.5rem;padding:2.5rem;
+  display:none;animation:fadeUp 0.4s both;
+  position:relative;overflow:hidden;
+}
+#type-detail::before{
+  content:'';position:absolute;top:-50%;right:-20%;
+  width:400px;height:400px;border-radius:50%;
+  background:radial-gradient(circle,var(--active-color,#fff) 0%,transparent 70%);
+  opacity:0.05;pointer-events:none;
+}
+.detail-header{display:flex;align-items:center;gap:1.5rem;margin-bottom:2rem;flex-wrap:wrap;}
+.detail-icon{font-size:3.5rem;}
+.detail-info h2{font-family:'Orbitron',monospace;font-size:1.8rem;font-weight:900;color:var(--active-color,#fff);}
+.detail-info p{color:var(--muted);font-family:'Crimson Pro',serif;font-size:1rem;font-style:italic;}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:2rem;}
+.detail-box{background:var(--surface2);border-radius:1rem;padding:1.5rem;}
+.detail-box h3{font-family:'Orbitron',monospace;font-size:0.75rem;letter-spacing:0.15em;margin-bottom:1rem;opacity:0.6;}
+.lore-text{font-family:'Crimson Pro',serif;font-size:1rem;line-height:1.8;color:var(--text);}
+.matchup-chips{display:flex;flex-wrap:wrap;gap:0.5rem;}
+.chip{padding:0.25rem 0.75rem;border-radius:2rem;font-size:0.75rem;font-family:'Orbitron',monospace;letter-spacing:0.05em;border:1px solid rgba(255,255,255,0.15);}
+.chip.strong{background:rgba(102,187,106,0.15);color:#66BB6A;border-color:rgba(102,187,106,0.3);}
+.chip.weak{background:rgba(239,83,80,0.15);color:#EF5350;border-color:rgba(239,83,80,0.3);}
+.chip.immune{background:rgba(120,120,120,0.15);color:#999;border-color:rgba(120,120,120,0.3);}
+
+/* BATTLE SIMULATOR */
+#simulator{background:rgba(0,0,0,0.3);}
+.sim-container{max-width:800px;margin:0 auto;}
+.sim-selectors{display:grid;grid-template-columns:1fr auto 1fr;gap:1rem;align-items:center;margin-bottom:2rem;}
+.sim-select{
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:1rem 1.5rem;border-radius:1rem;
+  font-family:'Orbitron',monospace;font-size:0.8rem;letter-spacing:0.05em;
+  width:100%;appearance:none;cursor:pointer;
+  transition:all 0.2s;
+}
+.sim-select:focus{outline:none;border-color:var(--electric);box-shadow:0 0 0 3px rgba(255,213,79,0.1);}
+.sim-vs{font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:900;text-align:center;background:linear-gradient(135deg,#FFD54F,#FF6B35);-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.sim-result{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:1.5rem;padding:2.5rem;text-align:center;
+  min-height:200px;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:1rem;position:relative;overflow:hidden;
+}
+.effectiveness-display{
+  font-family:'Orbitron',monospace;font-size:4rem;font-weight:900;
+  line-height:1;transition:all 0.4s;
+}
+.effectiveness-label{font-size:0.8rem;letter-spacing:0.2em;text-transform:uppercase;color:var(--muted);}
+.sim-explanation{
+  font-family:'Crimson Pro',serif;font-size:1.1rem;line-height:1.7;
+  color:var(--muted);max-width:500px;
+}
+
+/* TYPE CHART */
+#chart-section{overflow-x:auto;}
+.chart-wrap{overflow-x:auto;max-width:100%;}
+.type-matrix{border-collapse:separate;border-spacing:2px;font-size:0.6rem;min-width:800px;}
+.type-matrix th{
+  font-family:'Orbitron',monospace;font-size:0.55rem;letter-spacing:0.05em;
+  padding:0.4rem;text-align:center;color:var(--muted);
+  position:sticky;
+}
+.type-matrix td{
+  width:30px;height:30px;text-align:center;border-radius:4px;
+  cursor:pointer;transition:all 0.15s;font-weight:700;font-size:0.7rem;
+  position:relative;
+}
+.type-matrix td:hover{transform:scale(1.3);z-index:10;}
+.eff-2{background:rgba(102,187,106,0.5);color:#A5D6A7;}
+.eff-0_5{background:rgba(239,83,80,0.3);color:#EF9A9A;}
+.eff-0{background:rgba(100,100,100,0.3);color:#777;}
+.eff-1{background:rgba(255,255,255,0.04);color:rgba(255,255,255,0.15);}
+
+/* MYTH SECTION */
+.myth-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1.5rem;max-width:1100px;margin:0 auto;}
+.myth-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:1.5rem;padding:2rem;
+  transition:all 0.3s;position:relative;overflow:hidden;
+}
+.myth-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--c1),var(--c2));}
+.myth-card:hover{transform:translateY(-4px);border-color:rgba(255,255,255,0.2);}
+.myth-icon{font-size:2.5rem;margin-bottom:1rem;}
+.myth-card h3{font-family:'Orbitron',monospace;font-size:0.9rem;font-weight:700;margin-bottom:0.75rem;letter-spacing:0.05em;}
+.myth-card p{font-family:'Crimson Pro',serif;font-size:0.95rem;line-height:1.7;color:var(--muted);}
+
+/* FUN FACTS */
+.facts-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:1rem;max-width:1100px;margin:0 auto;}
+.fact-card{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:1rem;padding:1.5rem;
+  display:flex;gap:1rem;align-items:flex-start;
+  transition:all 0.2s;
+}
+.fact-card:hover{background:var(--surface2);}
+.fact-num{font-family:'Orbitron',monospace;font-size:1.5rem;font-weight:900;opacity:0.2;min-width:2rem;}
+.fact-text{font-family:'Crimson Pro',serif;font-size:0.95rem;line-height:1.6;color:var(--muted);}
+
+/* FOOTER */
+footer{
+  text-align:center;padding:3rem 2rem;
+  border-top:1px solid var(--border);
+  color:var(--muted);font-size:0.8rem;letter-spacing:0.1em;
+}
+
+/* SEARCH */
+.search-wrap{max-width:400px;margin:0 auto 3rem;position:relative;}
+.search-input{
+  width:100%;background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:0.9rem 1.5rem 0.9rem 3rem;border-radius:3rem;
+  font-family:'Rajdhani',sans-serif;font-size:1rem;
+  transition:all 0.2s;
+}
+.search-input:focus{outline:none;border-color:var(--electric);box-shadow:0 0 0 3px rgba(255,213,79,0.1);}
+.search-icon{position:absolute;left:1rem;top:50%;transform:translateY(-50%);opacity:0.5;font-size:1.1rem;}
+
+/* GENERATION TIMELINE */
+.timeline{max-width:900px;margin:0 auto;position:relative;}
+.timeline::before{content:'';position:absolute;left:2rem;top:0;bottom:0;width:1px;background:var(--border);}
+.tl-item{display:flex;gap:2rem;margin-bottom:3rem;position:relative;}
+.tl-dot{
+  width:1rem;height:1rem;border-radius:50%;
+  background:var(--electric);min-width:1rem;
+  margin-top:0.3rem;box-shadow:0 0 10px var(--electric);
+  margin-left:-0.5rem;
+}
+.tl-content{flex:1;}
+.tl-gen{font-family:'Orbitron',monospace;font-size:0.7rem;letter-spacing:0.15em;color:var(--electric);margin-bottom:0.3rem;}
+.tl-title{font-family:'Orbitron',monospace;font-size:1rem;font-weight:700;margin-bottom:0.5rem;}
+.tl-desc{font-family:'Crimson Pro',serif;font-size:0.95rem;line-height:1.6;color:var(--muted);}
+.tl-types{display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.75rem;}
+.tl-badge{padding:0.2rem 0.7rem;border-radius:2rem;font-size:0.65rem;font-family:'Orbitron',monospace;border:1px solid rgba(255,255,255,0.2);}
+
+/* RANDOM GEN */
+.random-btn{
+  display:flex;align-items:center;gap:0.75rem;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--text);padding:0.75rem 2rem;border-radius:3rem;
+  font-family:'Orbitron',monospace;font-size:0.8rem;letter-spacing:0.1em;
+  cursor:pointer;margin:0 auto 2rem;transition:all 0.2s;
+}
+.random-btn:hover{background:var(--surface2);border-color:rgba(255,213,79,0.4);}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .detail-grid{grid-template-columns:1fr;}
+  .sim-selectors{grid-template-columns:1fr;gap:0.5rem;}
+  .sim-vs{font-size:1rem;}
+  nav .nav-links{display:none;}
+  .timeline::before{left:0;}
+  .tl-dot{margin-left:-0.5rem;}
+  .tl-item{gap:1rem;}
+}
+
+/* SCROLL REVEAL */
+.reveal{opacity:0;transform:translateY(30px);transition:opacity 0.6s,transform 0.6s;}
+.reveal.visible{opacity:1;transform:translateY(0);}
+
+/* TOOLTIP */
+.tooltip{
+  position:fixed;z-index:200;
+  background:rgba(6,9,18,0.95);border:1px solid var(--border);
+  border-radius:0.75rem;padding:1rem 1.25rem;max-width:280px;
+  pointer-events:none;display:none;backdrop-filter:blur(10px);
+}
+.tooltip h4{font-family:'Orbitron',monospace;font-size:0.75rem;margin-bottom:0.5rem;color:var(--electric);}
+.tooltip p{font-family:'Crimson Pro',serif;font-size:0.9rem;line-height:1.5;color:var(--muted);}
+
+/* GLOW PULSE */
+@keyframes glow-pulse{0%,100%{box-shadow:0 0 20px rgba(255,213,79,0.2);}50%{box-shadow:0 0 40px rgba(255,213,79,0.4);}}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div class="cursor" id="cursor"></div>
+<div class="cursor-ring" id="cursorRing"></div>
+
+<!-- PARTICLES -->
+<div id="particles"></div>
+
+<!-- LOADER -->
+<div id="loader">
+  <div class="pokeball"></div>
+  <div class="loader-text">LOADING TYPE CODEX...</div>
+</div>
+
+<!-- TOOLTIP -->
+<div class="tooltip" id="tooltip">
+  <h4 id="tt-title"></h4>
+  <p id="tt-body"></p>
+</div>
+
+<!-- NAV -->
+<nav>
+  <div class="nav-logo">⚡ TYPE CODEX</div>
+  <ul class="nav-links">
+    <li><a href="#types">Types</a></li>
+    <li><a href="#simulator">Simulator</a></li>
+    <li><a href="#chart-section">Chart</a></li>
+    <li><a href="#mythology">Lore</a></li>
+    <li><a href="#timeline">History</a></li>
+  </ul>
+  <button class="music-btn" id="musicToggle">♪ AMBIENCE OFF</button>
+</nav>
+
+<!-- HERO -->
+<section id="hero">
+  <div class="hero-bg"></div>
+  <div class="hero-orbs">
+    <div class="orb" style="width:400px;height:400px;background:rgba(124,77,255,0.15);top:-100px;left:-100px;animation-duration:8s;"></div>
+    <div class="orb" style="width:300px;height:300px;background:rgba(255,107,53,0.1);bottom:-50px;right:-50px;animation-duration:10s;"></div>
+    <div class="orb" style="width:200px;height:200px;background:rgba(79,195,247,0.1);top:40%;right:10%;animation-duration:7s;"></div>
+  </div>
+  <span class="hero-badge">✦ POKÉMON TYPE LORE MUSEUM ✦</span>
+  <h1 class="hero-title">The Logic Behind<br>Pokémon Type Matchups</h1>
+  <p class="hero-sub">Discover the science, mythology, nature, and ancient legends that define every Pokémon battle. This is not just a chart — it's a civilisation of elemental knowledge.</p>
+  <a href="#types" class="cta-btn">⚔ Explore the Type World</a>
+  <div class="scroll-hint">SCROLL<div class="scroll-arrow"></div></div>
+</section>
+
+<!-- TYPES EXPLORER -->
+<section id="types">
+  <div style="text-align:center;max-width:1100px;margin:0 auto;">
+    <p class="section-label">The Eighteen Elements</p>
+    <h2 class="section-title reveal">Choose Your Type</h2>
+    <p class="section-desc reveal" style="margin:0 auto 2rem;">Each type carries a universe of meaning — click to unveil its origin, lore, and battle logic.</p>
+    <div class="search-wrap reveal">
+      <span class="search-icon">🔍</span>
+      <input type="text" class="search-input" id="typeSearch" placeholder="Search a type...">
+    </div>
+    <div class="type-grid" id="typeGrid"></div>
+    <div id="type-detail"></div>
+  </div>
+</section>
+
+<!-- BATTLE SIMULATOR -->
+<section id="simulator">
+  <div class="sim-container">
+    <p class="section-label">Battle Academy</p>
+    <h2 class="section-title reveal">Type Matchup Simulator</h2>
+    <p class="section-desc reveal">Select an attacker and defender to reveal the effectiveness and the lore behind it.</p>
+    <button class="random-btn reveal" id="randomBtn">🎲 Random Matchup</button>
+    <div class="sim-selectors reveal">
+      <select class="sim-select" id="attacker"><option value="">— Attacker —</option></select>
+      <div class="sim-vs">VS</div>
+      <select class="sim-select" id="defender"><option value="">— Defender —</option></select>
+    </div>
+    <div class="sim-result reveal" id="simResult">
+      <div class="effectiveness-label">Select types to begin</div>
+    </div>
+  </div>
+</section>
+
+<!-- TYPE CHART -->
+<section id="chart-section">
+  <div style="max-width:1100px;margin:0 auto;">
+    <p class="section-label">The Full Matrix</p>
+    <h2 class="section-title reveal">Interactive Type Chart</h2>
+    <p class="section-desc reveal">Hover over any cell to see the interaction explained. Columns = Attacker, Rows = Defender.</p>
+    <div class="chart-wrap reveal">
+      <table class="type-matrix" id="typeMatrix"></table>
+    </div>
+    <div style="display:flex;gap:2rem;justify-content:center;margin-top:1.5rem;flex-wrap:wrap;" class="reveal">
+      <span><span style="color:#66BB6A;font-weight:700;">■</span> 2× Super Effective</span>
+      <span><span style="color:#EF5350;font-weight:700;">■</span> 0.5× Not Very Effective</span>
+      <span><span style="color:#777;font-weight:700;">■</span> 0× Immune</span>
+      <span><span style="color:rgba(255,255,255,0.2);font-weight:700;">■</span> 1× Normal</span>
+    </div>
+  </div>
+</section>
+
+<!-- MYTHOLOGY -->
+<section id="mythology">
+  <div style="max-width:1100px;margin:0 auto;">
+    <p class="section-label">Origins & Legends</p>
+    <h2 class="section-title reveal">Mythological Inspirations</h2>
+    <p class="section-desc reveal">The type system was not invented arbitrarily — it draws from millennia of human folklore, science, and cultural philosophy.</p>
+    <div class="myth-grid" id="mythGrid"></div>
+  </div>
+</section>
+
+<!-- TIMELINE -->
+<section id="timeline">
+  <div style="max-width:1100px;margin:0 auto;">
+    <p class="section-label">History of Balance</p>
+    <h2 class="section-title reveal">Type System Evolution</h2>
+    <p class="section-desc reveal">The type chart has evolved across generations as Game Freak refined competitive balance and cultural expression.</p>
+    <div class="timeline" id="tlContainer"></div>
+  </div>
+</section>
+
+<!-- FUN FACTS -->
+<section id="funfacts" style="background:rgba(0,0,0,0.2);">
+  <div style="max-width:1100px;margin:0 auto;">
+    <p class="section-label" style="text-align:center;">Did You Know?</p>
+    <h2 class="section-title reveal" style="text-align:center;">Fun Facts & Curiosities</h2>
+    <div class="facts-grid" id="factsGrid"></div>
+  </div>
+</section>
+
+<footer>
+  <p style="font-family:'Orbitron',monospace;font-size:0.8rem;letter-spacing:0.2em;margin-bottom:0.5rem;">⚡ POKÉMON TYPE CODEX</p>
+  <p>A fan-made lore encyclopedia. Pokémon is © Nintendo / Game Freak. No affiliation claimed.</p>
+</footer>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// DATA
+// ═══════════════════════════════════════════════════════════
+const TYPES = [
+  { name:'Normal', emoji:'⭕', color:'#E0E0E0', origin:'The blank slate of existence — no elemental alignment, pure mundane reality.',
+    lore:'Normal type represents the everyday world untouched by elemental forces. In Japanese philosophy, the concept of "mu" (nothingness) mirrors this: Normal is the absence of the extraordinary. It is immune to the supernatural — Ghost attacks pass through Normal types because spirits cannot interact with the purely physical world, yet Normal itself cannot pierce the veil of spectral existence.',
+    strong:[], weak:['Fighting'], immune:['Ghost'], resists:[], sciReason:'No elemental affinity means no resonance with supernatural energies, creating both resistance and limitation.',
+    pokemon:['Snorlax','Pidgey','Eevee','Meowth'] },
+  { name:'Fire', emoji:'🔥', color:'#FF6B35', origin:'The primal force of destruction and warmth — civilisation\'s oldest tool and most feared enemy.',
+    lore:'Fire has shaped human civilization for millennia. In Japanese mythology, the fire deity Kagutsuchi was so dangerous his birth killed his mother Izanami. Fire destroys Grass because combustion consumes organic matter; it weakens Ice and Bug for the same reason. Yet Water quenches it, Rock smothers it, and the Ground from which fire erupts can be dampened. Dragon types share fire\'s power — many mythological dragons breathe flame — creating an elemental kinship.',
+    strong:['Grass','Ice','Bug','Steel'], weak:['Water','Ground','Rock'], immune:[], resists:['Fire','Grass','Ice','Bug','Steel','Fairy'],
+    sciReason:'Combustion reactions require fuel (Grass, Bug), are accelerated in oxygen (Flying helps spread), and are quenched by water or smothered by rock.',
+    pokemon:['Charizard','Arcanine','Ninetales','Magmar'] },
+  { name:'Water', emoji:'💧', color:'#4FC3F7', origin:'The source of all life — oceans that birthed the first organisms and rivers worshipped as gods.',
+    lore:'In Shinto, water kami govern rivers, seas, and rain. Water conducts electricity (hence Electric\'s advantage), can erode Rock, and is essential to all Grass growth. The Greek primordial god Oceanus was believed to encircle the entire world. Water is weak to Electric because H₂O is a polar molecule that facilitates ion movement — the fundamental reason sea-water electrocution is lethal.',
+    strong:['Fire','Ground','Rock'], weak:['Electric','Grass'], immune:[], resists:['Fire','Water','Ice','Steel'],
+    sciReason:'Water molecules are polar and contain dissolved ions, making them excellent electrical conductors. Plants absorb water but can also be overwhelmed by it.',
+    pokemon:['Blastoise','Vaporeon','Gyarados','Milotic'] },
+  { name:'Grass', emoji:'🌿', color:'#66BB6A', origin:'The living web of nature — the patient, slow-growing force that covers the world in green.',
+    lore:'Grass represents the natural cycle: growth, decay, and renewal. In Celtic mythology, green forests were sacred realms of the Fair Folk. Grass absorbs Water (plants drink), dominates Ground and Rock (roots crack stone over centuries), but withers under Fire and is eaten by Bug and Bird. Poison stunts growth; Ice freezes roots. The Grass type embodies the Zen of patient growth — powerful but vulnerable to disruption.',
+    strong:['Water','Ground','Rock'], weak:['Fire','Ice','Poison','Flying','Bug'], immune:[], resists:['Water','Electric','Grass','Ground'],
+    sciReason:'Photosynthesis makes plants water-dependent and sun-seeking. Insects are primary plant predators; fire, frost, and fungal toxins are their greatest killers.',
+    pokemon:['Bulbasaur','Exeggutor','Leafeon','Roserade'] },
+  { name:'Electric', emoji:'⚡', color:'#FFD54F', origin:'The invisible force that animates all life — from lightning storms to the signals in your nervous system.',
+    lore:'In Norse mythology, Thor wields lightning as the ultimate weapon. Electricity travels through Water (conductivity), but Ground absorbs it (earthing principle used in electrical engineering). Flying types are struck because they\'re airborne and ungrounded. Electric cannot ground itself, hence its zero effect on Ground. This is literally physics: lightning seeks the path of least resistance to earth.',
+    strong:['Water','Flying'], weak:['Ground'], immune:['Ground'], resists:['Electric','Flying','Steel'],
+    sciReason:'Electrical current flows through conductive materials (Water, metal) and dissipates into Earth (Ground). Non-conductive materials and already-charged objects are unaffected.',
+    pokemon:['Pikachu','Raichu','Jolteon','Ampharos'] },
+  { name:'Ice', emoji:'❄️', color:'#80DEEA', origin:'The ancient, patient cold — glaciers that reshape continents and winters that humble armies.',
+    lore:'Ice is the type of endings and stasis. In Norse cosmology, the world began in ice (Niflheim) and will end in a final winter (Fimbulwinter). Ice destroys Dragon because mythological great serpents and dragons — cold-blooded by nature — are paralysed by freezing. Ice shatters against Steel (frozen metal is brittle but the structure holds) and melts against Fire. Flying creatures are grounded by ice storms; Ground is frozen solid.',
+    strong:['Grass','Ground','Flying','Dragon'], weak:['Fire','Fighting','Rock','Steel'], immune:[], resists:['Ice'],
+    sciReason:'Cold temperature reduces metabolic function in cold-blooded organisms (Dragon). Ice disrupts earth layers (Ground) and stops birds in flight (Flying). Fighting shatters ice through force.',
+    pokemon:['Articuno','Glaceon','Weavile','Lapras'] },
+  { name:'Fighting', emoji:'🥊', color:'#EF5350', origin:'Human martial discipline — the channeled force of the body, shaped by discipline and philosophy.',
+    lore:'Fighting type draws from Asian martial arts traditions — karate, judo, muay thai. It shatters Rock and Ice through focused force, strikes Normal types that lack elemental defense, and dominates Dark and Steel with righteous physical power. Yet it cannot touch Ghost (you cannot punch what isn\'t there), and Flying and Psychic outmaneuver it — the martial artist overwhelmed by a distracted mind or aerial evasion. Fairy represents the whimsical overpowering the purely physical.',
+    strong:['Normal','Ice','Rock','Dark','Steel'], weak:['Flying','Psychic','Fairy'], immune:['Ghost'], resists:['Bug','Rock','Dark'],
+    sciReason:'Physical force overcomes material resistance (Rock, Ice, Steel) but cannot affect non-corporeal entities (Ghost) or those with psychological advantage (Psychic) or altitude (Flying).',
+    pokemon:['Machamp','Lucario','Hitmonlee','Hawlucha'] },
+  { name:'Poison', emoji:'☠️', color:'#CE93D8', origin:'The dark alchemy of toxins — nature\'s chemical warfare, from venomous serpents to deadly nightshade.',
+    lore:'Poison reflects nature\'s chemical arsenal. Plants produce toxins to discourage herbivores — hence Poison beats Grass. In mythology, poison is associated with treachery and hidden danger (the serpent in Eden, Loki\'s trickery). Fairy types, representing purity and magic, are corrupted by poison\'s insidious nature. Ground absorbs and neutralises toxins (soil microbes process poison); Steel is impervious to chemical attack (inert metal surface).',
+    strong:['Grass','Fairy'], weak:['Ground','Psychic'], immune:['Poison','Bug','Grass','Fighting','Fairy'], resists:[],
+    sciReason:'Toxins target biological systems. Organic plants are vulnerable; psychic clarity pierces poison\'s confusion; earth absorbs and neutralises toxins.',
+    pokemon:['Gengar','Arbok','Nidoking','Roserade'] },
+  { name:'Ground', emoji:'⛰️', color:'#BCAAA4', origin:'The foundation of the world — tectonic forces, buried minerals, and the earth that absorbs all things.',
+    lore:'Ground is the ultimate absorber and destroyer. It neutralises Electric (earthing principle), swallows Poison (soil bioremediation), and burns with Fire\'s heat to crack Rock. In Japanese mythology, the catfish Namazu lives underground and causes earthquakes — the Ground type embodies this subterranean power. Yet Ground crumbles against Water (erosion), freezes against Ice, and Grass grows over it in time.',
+    strong:['Fire','Electric','Poison','Rock','Steel'], weak:['Water','Grass','Ice'], immune:['Electric'], resists:['Poison','Rock'],
+    sciReason:'Earth is an electrical conductor to ground, absorbs toxins biologically, and can be excavated by physical force. Water erodes earth; ice fractures it; plants colonise it.',
+    pokemon:['Rhydon','Garchomp','Donphan','Flygon'] },
+  { name:'Flying', emoji:'🦅', color:'#90CAF9', origin:'Freedom above the earth — the domain of gods, spirits, and the wind itself.',
+    lore:'In virtually every mythology, flight equals divine power. Zeus\'s eagle, Horus the falcon, the Garuda of Hindu legend. Flying dominates Grass (birds eat seeds and insects on plants), Fighting (aerial attacks evade ground-based strikes), and Bug. It is struck by Electric (lightning from above), Rock (thrown stones), and Ice (frozen wings). Flying is immune to Ground because it never touches the earth — an elegant logical consistency.',
+    strong:['Grass','Fighting','Bug'], weak:['Electric','Ice','Rock'], immune:['Ground'], resists:['Grass','Fighting','Bug'],
+    sciReason:'Airborne creatures avoid ground-based effects, are exposed to lightning and projectiles, and are grounded by ice storms. Birds eat insects and plant matter naturally.',
+    pokemon:['Pidgeot','Fearow','Togekiss','Skarmory'] },
+  { name:'Psychic', emoji:'🔮', color:'#F48FB1', origin:'The mind as the ultimate weapon — telekinesis, foresight, and the raw power of consciousness.',
+    lore:'Psychic represents the power of pure mind. In Buddhism, enlightenment (siddhi) grants mental powers like telepathy and telekinesis. Psychic dominates Poison (clarity of mind cuts through toxins and confusion) and Fighting (mind over matter). Yet it falls to Bug — in Jungian psychology, insects represent the "shadow self," primal fears that undermine rational thought. Dark resists Psychic because a cruel, closed mind is impenetrable to mental intrusion. Ghost bypasses it entirely.',
+    strong:['Poison','Fighting'], weak:['Bug','Ghost','Dark'], immune:['Dark'], resists:['Fighting','Psychic'],
+    sciReason:'Mental power overcomes physical brute force and chemical confusion, but primal fear (Bug), subconscious darkness (Dark), and non-physical entities (Ghost) defeat pure rational thought.',
+    pokemon:['Alakazam','Gardevoir','Mewtwo','Espeon'] },
+  { name:'Bug', emoji:'🐛', color:'#AED581', origin:'The ancient survivors — insects predate dinosaurs and will outlast civilisation itself.',
+    lore:'Bugs represent primal, pre-rational existence. They are Psychic\'s greatest weakness because they embody the unconscious, the phobia, the thing that crawls beneath reason. In Jungian analysis, insects symbolise the shadow — the repressed, instinctual self that terrifies the conscious mind. Bug overwhelms Grass (insects are primary plant predators in nature) and Psychic (primal fear defeats logic). Yet Fire burns insects, Flying birds eat them, and Rock crushes them.',
+    strong:['Grass','Psychic','Dark'], weak:['Fire','Flying','Rock'], immune:[], resists:['Grass','Fighting','Ground'],
+    sciReason:'Insects are primary herbivores (Grass), trigger instinctual fear responses that override rational thought (Psychic), and thrive in darkness (Dark). Predators and environmental extremes control them.',
+    pokemon:['Butterfree','Scizor','Heracross','Volcarona'] },
+  { name:'Rock', emoji:'🪨', color:'#A1887F', origin:'The bones of the earth — mountains, ancient stone, and geological time measured in eons.',
+    lore:'Rock is one of humanity\'s oldest tools and building materials. In Norse myth, giants (Jotnar) are beings of stone and ice. Rock crushes Bug and Flying (stones thrown, avalanches), sheds Poison (impermeable surface), but crumbles against Water (erosion), Grass (roots crack stone), Fighting (targeted strikes), Ground (seismic), and Steel (advanced metalworking). Rock is ancient power — overwhelming but brittle to the right force.',
+    strong:['Fire','Ice','Flying','Bug'], weak:['Water','Grass','Fighting','Ground','Steel'], immune:[], resists:['Normal','Fire','Poison','Flying'],
+    sciReason:'Hard mineral surfaces resist impacts and biological processes, but are subject to erosion, root penetration, seismic force, and metal tooling.',
+    pokemon:['Golem','Tyranitar','Aerodactyl','Regirock'] },
+  { name:'Ghost', emoji:'👻', color:'#7986CB', origin:'The spiritual world beyond death — souls, curses, and the thin veil between the living and the dead.',
+    lore:'Ghost types draw from Japanese yurei (vengeful spirits), western poltergeists, and the universal human fear of the dead. Ghost is immune to Normal and Fighting because spirits are non-corporeal — physical force passes through them. They are vulnerable to each other (spiritual power disrupts spiritual essence) and Dark (the profane overcomes the sacred). In Japanese folklore, cold spots, darkness, and psychic disturbance accompany spirits — hence Ghost/Psychic dynamics.',
+    strong:['Psychic','Ghost'], weak:['Ghost','Dark'], immune:['Normal','Fighting'], resists:['Poison','Bug'],
+    sciReason:'Non-corporeal entities cannot be struck by physical force. They are only disrupted by equivalent non-physical energy (other Ghost attacks) or the deliberate cruelty that blocks spiritual sensitivity (Dark).',
+    pokemon:['Gengar','Misdreavus','Chandelure','Mimikyu'] },
+  { name:'Dragon', emoji:'🐉', color:'#7C4DFF', origin:'The supreme mythological beast — present in virtually every human culture as the ultimate creature of power.',
+    lore:'Dragons exist in mythology worldwide: European fire-breathers, Chinese lung, Japanese ryū, Norse Jörmungandr. Dragon type represents ultimate elemental mastery — it resists Fire, Water, Electric, and Grass because it has transcended them. Yet Ice freezes dragons (cold-blooded mythological creatures are paralysed by winter), other Dragons challenge it in legendary battle, and Fairy — representing the pure and magical — has a storied tradition of defeating serpents and dragons in folk tales (St. George, Norse legends, Irish folklore).',
+    strong:['Dragon'], weak:['Ice','Dragon','Fairy'], immune:['Fairy'], resists:['Fire','Water','Electric','Grass'],
+    sciReason:'Dragons in myth transcend natural elements, making them resistant to each. Ice defeats cold-blooded physiology. Other dragons are their only true rivals. Fairy magic disrupts their power.',
+    pokemon:['Dragonite','Salamence','Garchomp','Rayquaza'] },
+  { name:'Dark', emoji:'🌑', color:'#546E7A', origin:'The shadow side of the human soul — cruelty, trickery, and the power found in moral darkness.',
+    lore:'Dark type was introduced in Generation II to counter the overpowered Psychic type. It represents cruelty, cunning, and the rejection of rules. Dark beats Psychic (a closed, cruel mind resists mental intrusion) and Ghost (the profane disrupts the sacred). It is defeated by Fighting (justice and discipline overcome cruelty), Bug (primal instinct pierces through calculation), and Fairy (innocence and purity reject darkness). Fittingly, Dark is immune to Premonition — you cannot read the mind of one who has no conscience.',
+    strong:['Psychic','Ghost'], weak:['Fighting','Bug','Fairy'], immune:['Psychic'], resists:['Ghost','Dark'],
+    sciReason:'Moral and psychological darkness blocks mental powers. Physical discipline and primal instinct overcome calculated cruelty. Pure magical forces (Fairy) inherently oppose dark energy.',
+    pokemon:['Umbreon','Tyranitar','Absol','Darkrai'] },
+  { name:'Steel', emoji:'⚙️', color:'#B0BEC5', origin:'The industrial age made elemental — forged metal as armour, weapon, and symbol of human mastery over nature.',
+    lore:'Steel was introduced in Generation II alongside Dark to balance the type chart. It represents the industrial era — refined metal, advanced technology, and the human capacity to reshape the world. Steel resists almost everything (11 types!) because refined metal is chemically inert and physically formidable. Fire melts it; Fighting cracks it; Ground undermines it. Poison cannot affect inert metal surfaces. In Japanese culture, steel is associated with samurai bushido — discipline and near-invulnerability.',
+    strong:['Ice','Rock','Fairy'], weak:['Fire','Fighting','Ground'], immune:['Poison'], resists:['Normal','Grass','Ice','Flying','Psychic','Bug','Rock','Dragon','Steel','Fairy'],
+    sciReason:'Refined metal has high melting points but can be overcome by intense heat. Physical force and seismic activity can deform metal structures. Metal is chemically inert to most biological toxins.',
+    pokemon:['Steelix','Scizor','Metagross','Aegislash'] },
+  { name:'Fairy', emoji:'🌸', color:'#F8BBD9', origin:'Ancient magic and folklore — the realm of the fae, pure enchantment, and the power of belief.',
+    lore:'Fairy type was introduced in Generation VI to counter the dominant Dragon type and balance Dark. In Celtic mythology, fairies (sidhe) exist in a parallel realm and possess power that dragons and dark forces cannot overcome. Fairy magic is pure and primal — it disrupts Dragon\'s elemental mastery (St. George, the Knight, the Fairy Tale), defeats Dark\'s cynicism (innocence overcomes evil), and repels the Fighting type\'s brute physical force. Poison and Steel counter Fairy because toxins corrupt purity, and iron is said in folklore to ward off and harm fairy beings.',
+    strong:['Fighting','Dragon','Dark'], weak:['Poison','Steel'], immune:['Dragon'], resists:['Fighting','Bug','Dark'],
+    sciReason:'In folklore, iron wards off fairies (hence Steel weakness). Fairies represent pure magic that transcends elemental forces like Dragon and breaks through psychological darkness.',
+    pokemon:['Clefable','Togekiss','Gardevoir','Sylveon'] },
+];
+
+// TYPE CHART DATA (attacker→defender effectiveness)
+// 0=immune, 0.5=nve, 1=normal, 2=se
+const TYPE_NAMES = TYPES.map(t=>t.name);
+const rawChart = {
+  Normal:   {Normal:1,Fire:1,Water:1,Grass:1,Electric:1,Ice:1,Fighting:1,Poison:1,Ground:1,Flying:1,Psychic:1,Bug:1,Rock:0.5,Ghost:0,Dragon:1,Dark:1,Steel:0.5,Fairy:1},
+  Fire:     {Normal:1,Fire:0.5,Water:0.5,Grass:2,Electric:1,Ice:2,Fighting:1,Poison:1,Ground:1,Flying:1,Psychic:1,Bug:2,Rock:0.5,Ghost:1,Dragon:0.5,Dark:1,Steel:2,Fairy:1},
+  Water:    {Normal:1,Fire:2,Water:0.5,Grass:0.5,Electric:1,Ice:1,Fighting:1,Poison:1,Ground:2,Flying:1,Psychic:1,Bug:1,Rock:2,Ghost:1,Dragon:0.5,Dark:1,Steel:1,Fairy:1},
+  Grass:    {Normal:1,Fire:0.5,Water:2,Grass:0.5,Electric:1,Ice:1,Fighting:1,Poison:0.5,Ground:2,Flying:0.5,Psychic:1,Bug:0.5,Rock:2,Ghost:1,Dragon:0.5,Dark:1,Steel:0.5,Fairy:1},
+  Electric: {Normal:1,Fire:1,Water:2,Grass:0.5,Electric:0.5,Ice:1,Fighting:1,Poison:1,Ground:0,Flying:2,Psychic:1,Bug:1,Rock:1,Ghost:1,Dragon:0.5,Dark:1,Steel:1,Fairy:1},
+  Ice:      {Normal:1,Fire:0.5,Water:0.5,Grass:2,Electric:1,Ice:0.5,Fighting:1,Poison:1,Ground:2,Flying:2,Psychic:1,Bug:1,Rock:1,Ghost:1,Dragon:2,Dark:1,Steel:0.5,Fairy:1},
+  Fighting: {Normal:2,Fire:1,Water:1,Grass:1,Electric:1,Ice:2,Fighting:1,Poison:0.5,Ground:1,Flying:0.5,Psychic:0.5,Bug:0.5,Rock:2,Ghost:0,Dragon:1,Dark:2,Steel:2,Fairy:0.5},
+  Poison:   {Normal:1,Fire:1,Water:1,Grass:2,Electric:1,Ice:1,Fighting:1,Poison:0.5,Ground:0.5,Flying:1,Psychic:1,Bug:1,Rock:0.5,Ghost:0.5,Dragon:1,Dark:1,Steel:0,Fairy:2},
+  Ground:   {Normal:1,Fire:2,Water:1,Grass:0.5,Electric:2,Ice:1,Fighting:1,Poison:2,Ground:1,Flying:0,Psychic:1,Bug:0.5,Rock:2,Ghost:1,Dragon:1,Dark:1,Steel:2,Fairy:1},
+  Flying:   {Normal:1,Fire:1,Water:1,Grass:2,Electric:0.5,Ice:1,Fighting:2,Poison:1,Ground:1,Flying:1,Psychic:1,Bug:2,Rock:0.5,Ghost:1,Dragon:1,Dark:1,Steel:0.5,Fairy:1},
+  Psychic:  {Normal:1,Fire:1,Water:1,Grass:1,Electric:1,Ice:1,Fighting:2,Poison:2,Ground:1,Flying:1,Psychic:0.5,Bug:1,Rock:1,Ghost:1,Dragon:1,Dark:0,Steel:0.5,Fairy:1},
+  Bug:      {Normal:1,Fire:0.5,Water:1,Grass:2,Electric:1,Ice:1,Fighting:0.5,Poison:0.5,Ground:1,Flying:0.5,Psychic:2,Bug:1,Rock:1,Ghost:0.5,Dragon:1,Dark:2,Steel:0.5,Fairy:0.5},
+  Rock:     {Normal:1,Fire:2,Water:1,Grass:1,Electric:1,Ice:2,Fighting:0.5,Poison:1,Ground:0.5,Flying:2,Psychic:1,Bug:2,Rock:1,Ghost:1,Dragon:1,Dark:1,Steel:0.5,Fairy:1},
+  Ghost:    {Normal:0,Fire:1,Water:1,Grass:1,Electric:1,Ice:1,Fighting:0,Poison:1,Ground:1,Flying:1,Psychic:2,Bug:1,Rock:1,Ghost:2,Dragon:1,Dark:0.5,Steel:1,Fairy:1},
+  Dragon:   {Normal:1,Fire:1,Water:1,Grass:1,Electric:1,Ice:1,Fighting:1,Poison:1,Ground:1,Flying:1,Psychic:1,Bug:1,Rock:1,Ghost:1,Dragon:2,Dark:1,Steel:0.5,Fairy:0},
+  Dark:     {Normal:1,Fire:1,Water:1,Grass:1,Electric:1,Ice:1,Fighting:0.5,Poison:1,Ground:1,Flying:1,Psychic:2,Bug:1,Rock:1,Ghost:2,Dragon:1,Dark:0.5,Steel:0.5,Fairy:0.5},
+  Steel:    {Normal:1,Fire:0.5,Water:0.5,Grass:1,Electric:0.5,Ice:2,Fighting:1,Poison:1,Ground:1,Flying:1,Psychic:1,Bug:1,Rock:2,Ghost:1,Dragon:1,Dark:1,Steel:0.5,Fairy:2},
+  Fairy:    {Normal:1,Fire:1,Water:1,Grass:1,Electric:1,Ice:1,Fighting:2,Poison:0.5,Ground:1,Flying:1,Psychic:1,Bug:1,Rock:1,Ghost:1,Dragon:2,Dark:2,Steel:0.5,Fairy:1},
+};
+
+const BATTLE_LORE = {
+  'Fire-Grass':'Fire consumes organic matter — the ultimate predator of plant life. Where flame touches chlorophyll, photosynthesis becomes ash.',
+  'Fire-Ice':'Heat melts ice — an absolute law of thermodynamics. The dragon\'s breath against the glacier ends in only one way.',
+  'Fire-Bug':'Insects are fragile and combustible. A single spark ends the swarm that took years to grow.',
+  'Fire-Steel':'Intense heat at the forge melts metal — the very process humans use to shape steel into tools and weapons.',
+  'Water-Fire':'Water smothers flame by eliminating the oxygen required for combustion. The ocean extinguishes even the sun\'s reflection.',
+  'Water-Ground':'Rivers carve canyons. Erosion is patient, and water always wins against earth over time.',
+  'Water-Rock':'Hydraulic pressure and erosion turn boulders to sand over millennia — or in a moment, with enough force.',
+  'Electric-Water':'Salt water is an excellent conductor of electricity. The same physics that makes ocean lightning deadly.',
+  'Electric-Flying':'Airborne creatures make perfect lightning rods — ungrounded and exposed to the sky\'s electrical discharge.',
+  'Ground-Electric':'Electrical current flows to earth — this is the principle behind every grounding rod in every building on earth.',
+  'Ground-Poison':'Soil microbes neutralise toxins through bioremediation. The earth absorbs what would kill other living things.',
+  'Ground-Fire':'Excavating or burying a fire smothers it. Ground smothers flames by removing oxygen.',
+  'Ground-Rock':'Seismic activity and soil displacement can shatter even the hardest stone formations.',
+  'Ground-Steel':'Even steel structures fail when the foundation crumbles beneath them.',
+  'Grass-Water':'Plants absorb water as their primary nutrient — dominating the water source itself.',
+  'Grass-Ground':'Root systems penetrate and colonise earth, cracking stone and binding soil over generations.',
+  'Grass-Rock':'Tree roots split boulders over decades — patient, inevitable growth.',
+  'Ice-Dragon':'Mythological dragons are cold-blooded creatures of power, paralysed by freezing temperatures. The great serpent cannot survive the glacier.',
+  'Ice-Flying':'Ice storms ground birds and freeze wings. The sky\'s masters fall when the air itself freezes.',
+  'Ice-Grass':'Frost kills plants — ice crystals rupture cell walls, ending photosynthesis instantly.',
+  'Ice-Ground':'Permafrost and glacial erosion reshape entire landscapes.',
+  'Fighting-Normal':'Physical discipline overcomes an ordinary opponent who lacks elemental defense.',
+  'Fighting-Rock':'Martial artists split stone with focused force — the principle behind every board-breaking demonstration.',
+  'Fighting-Ice':'Targeted strikes shatter ice more effectively than unfocused force.',
+  'Fighting-Dark':'Justice and righteousness — the fighter\'s code — overcomes the trickster\'s cruelty.',
+  'Fighting-Steel':'Industrial metalworking requires physical force. The craftsman shapes steel with hammer and will.',
+  'Psychic-Poison':'Mental clarity and focus neutralise the confusion and biological disruption of toxins.',
+  'Psychic-Fighting':'Mind over matter — the psychic redirects physical force through mental mastery.',
+  'Bug-Grass':'Insects are the primary herbivores of the natural world, devouring plant matter since before the age of dinosaurs.',
+  'Bug-Psychic':'Primal instinct and the shadow self undermine rational thought — Jungian psychology incarnate.',
+  'Bug-Dark':'Primal instinct bypasses the calculated cruelty of the dark mind.',
+  'Rock-Fire':'Stone smothers flames by eliminating oxygen — the same principle as a fire blanket.',
+  'Rock-Flying':'Projectile rocks and avalanches ground flying creatures.',
+  'Rock-Ice':'Physical force shatters ice crystal structures.',
+  'Rock-Bug':'Rock literally crushes insects — no metaphor required.',
+  'Ghost-Psychic':'Spirits bypass the rational mind entirely, attacking from a dimension that reason cannot defend.',
+  'Ghost-Ghost':'Only another spirit can truly harm a spirit — ethereal disrupts ethereal.',
+  'Ghost-Normal':'Spirits pass through the physical world without interaction. Normal types exist purely in the material realm.',
+  'Ghost-Fighting':'You cannot punch a ghost. Physical force has no purchase on the non-corporeal.',
+  'Dragon-Dragon':'Only a dragon can truly challenge another dragon — no other creature has the elemental mastery to contend.',
+  'Fairy-Dragon':'Ancient folklore places fairies in direct opposition to great serpents. St. George, the knight, the fairy tale hero — the pure overcomes the mighty.',
+  'Fairy-Dark':'Innocence and purity resist cynicism and evil. The fairy tale always ends with light overcoming darkness.',
+  'Fairy-Fighting':'The whimsical and magical transcends the merely physical. Brute force cannot strike what dances on starlight.',
+  'Dark-Psychic':'A closed, cruel mind is impenetrable to mental intrusion. You cannot read the thoughts of one who has abandoned conscience.',
+  'Dark-Ghost':'The profane disrupts the sacred. Darkness smothers what little light the spirit retained.',
+  'Poison-Grass':'Plant life is vulnerable to chemical disruption — toxins destroy the very biological processes that define them.',
+  'Poison-Fairy':'Corruption taints purity. Even the most magical essence can be broken down by insidious chemistry.',
+  'Steel-Ice':'Refined metal outclasses frozen water — the industrial age mastering the ancient cold.',
+  'Steel-Rock':'Advanced metalworking and steel tools were humanity\'s key to mastering stone.',
+  'Steel-Fairy':'In Celtic folklore, iron and steel ward off fairy beings — their greatest vulnerability, their ancient weakness.',
+};
+
+const MYTHS = [
+  {icon:'🐉',c1:'#7C4DFF',c2:'#FF6B35',title:'Dragons Across Cultures',text:'Every culture birthed its own dragon: the Chinese lung symbolising imperial power, the Norse Jörmungandr encircling the world, the European fire-breather guarding gold. The Dragon type captures this universal myth — a creature of elemental mastery, resistant to all forces, ultimately only defeated by its own kind, ice, or the purity of fairy magic.'},
+  {icon:'🧚',c1:'#F8BBD9',c2:'#CE93D8',title:'Fairies vs. Dragons',text:'In Irish and Celtic folklore, the sidhe (fairy folk) and great serpents are ancient enemies. The fairy tale tradition — from St. George to countless folk stories — places the pure and magical against the mighty and draconic. Game Freak encoded this directly: Fairy is immune to Dragon, reflecting millennia of storytelling about purity overcoming power.'},
+  {icon:'👹',c1:'#546E7A',c2:'#7986CB',title:'Japanese Yokai & Ghost Types',text:'The Ghost type draws from Japan\'s rich spirit tradition: yurei (vengeful dead), onryō (angry spirits), and bakemono (transformed monsters). These entities in Japanese folklore cannot be touched by the living (Normal) or overcome by brute force (Fighting). They exist in a parallel realm, vulnerable only to the spiritual (other Ghosts) and the profane (Dark).'},
+  {icon:'🧠',c1:'#F48FB1',c2:'#7986CB',title:'Psychic\'s Shadow: The Bug Problem',text:'Carl Jung\'s concept of the Shadow — the repressed, unconscious self — is embodied in the Bug type\'s supremacy over Psychic. Insects represent primal phobia, the pre-rational, the thing that crawls beneath civilised consciousness. No amount of telekinetic power defeats a deeply irrational fear. This is one of gaming\'s most psychologically sophisticated type decisions.'},
+  {icon:'⚔️',c1:'#EF5350',c2:'#FFD54F',title:'Martial Arts & Fighting Type',text:'The Fighting type is a direct homage to Asian martial traditions. Pokémon like Machamp (powerlifter), Hitmonlee (Bruce Lee), and Hitmonchan (Jackie Chan) encode real martial arts philosophies. The type\'s interaction — strength through discipline, vulnerable to trickery (Dark) and the mind (Psychic) — mirrors the philosophical tensions within martial arts traditions.'},
+  {icon:'🏭',c1:'#B0BEC5',c2:'#546E7A',title:'Steel: The Industrial Revolution',text:'Steel and Dark were introduced simultaneously in Gen II — a pair that symbolises modernity. Steel represents the industrial age: refined, mechanical, resistant to natural forces. Its 11 type resistances reflect metal\'s real-world imperviousness to most natural processes. Only intense heat (Fire), focused physical force (Fighting), and seismic disruption (Ground) overcome the perfect armour.'},
+  {icon:'🌙',c1:'#546E7A',c2:'#7C4DFF',title:'Dark Type: The Trickster Archetype',text:'The Dark type embodies the Trickster archetype found across mythologies — Loki, Anansi, Coyote. These figures win through cunning, cruelty, and rule-breaking rather than strength. Dark beats Psychic (the rational mind) and Ghost (the sacred) but falls to Fighting (discipline), Bug (primal instinct), and Fairy (innocence that the trickster cannot corrupt).'},
+  {icon:'⚡',c1:'#FFD54F',c2:'#4FC3F7',title:'Thor\'s Lightning: Electric Lore',text:'Lightning has been the weapon of sky gods across cultures: Zeus, Thor, Indra, Jupiter. The Electric type\'s interactions are pure physics — conductivity through water, dissipation into ground — expressed mythologically. Its immunity interaction with Ground is the one type relationship that is literally a physics equation: electrical grounding.'},
+  {icon:'🌿',c1:'#66BB6A',c2:'#BCAAA4',title:'Nature\'s Cycle: Grass, Water & Ground',text:'The Grass-Water-Ground triangle reflects the natural water cycle. Rain (Water) feeds plants (Grass); plants colonise earth (Ground); earth channels water. This cyclical relationship creates a rock-paper-scissors balance that mirrors ecological reality, not fantasy — a rare moment where the type chart is simply observing nature.'},
+];
+
+const FUN_FACTS = [
+  'Ghost is immune to Normal AND Fighting — you literally cannot punch a ghost. This is the only type with two immunities from physical force.',
+  'Dragon resists Fire, Water, Electric, and Grass simultaneously — four of the six starter types. Dragons truly transcend elemental classification.',
+  'Steel has 11 type resistances in Generation VI onward, making it the most defensive type in the game by a huge margin.',
+  'Dark type was created specifically to counter Psychic, which dominated Generation I so completely that the competitive scene was nearly broken.',
+  'Fairy type was introduced 18 years after the original game to rebalance Dragons, which had dominated competitive play for a generation.',
+  'The only type that is super effective against itself is Dragon — fitting for a type representing legendary battles between apex predators.',
+  'Bug type has the weakest offensive coverage in the game, yet it uniquely counters Psychic and Dark — two of the most powerful types.',
+  'Ground type is immune to Electric, making Electric-Ground a completely one-sided non-interaction — the only offensive type with zero effect on a fully grounded opponent.',
+  'Normal type has no offensive super effectiveness against any type — it is literally the only type that cannot deal bonus damage to anything.',
+  'Ghost type was the only type that could hit Ghost types in Generation I, before Normal gained the Scrappy ability and similar effects were introduced.',
+  'Poison\'s immunity to Steel is thematic — chemically inert metals don\'t react with most biological toxins, a rare instance of pure chemistry in the type chart.',
+  'The Fairy type made Dragon the first type to gain a full immunity to a new type mid-series — Dragon is now immune to Fairy, something that didn\'t exist for the first 17 years of Pokémon.',
+];
+
+const TIMELINE = [
+  {gen:'Generation I — 1996',title:'The Original 15 Types',desc:'Red and Blue launched with 15 types. Bug, Poison, and Psychic were famously broken — Psychic had almost no weaknesses due to a coding glitch that made Ghost do zero damage to it, and Poison was incorrectly calculated. The type chart was raw and unbalanced.',types:['Normal','Fire','Water','Grass','Electric','Ice','Fighting','Poison','Ground','Flying','Psychic','Bug','Rock','Ghost','Dragon'],colors:['#E0E0E0','#FF6B35','#4FC3F7','#66BB6A','#FFD54F','#80DEEA','#EF5350','#CE93D8','#BCAAA4','#90CAF9','#F48FB1','#AED581','#A1887F','#7986CB','#7C4DFF']},
+  {gen:'Generation II — 1999',title:'Steel & Dark Arrive',desc:'Gold and Silver introduced Steel and Dark to fix Psychic dominance and create a new defensive powerhouse. Steel\'s 11 resistances made it revolutionary. Dark specifically countered Psychic and Ghost. The chart became far more balanced and has remained relatively stable since.',types:['Steel','Dark'],colors:['#B0BEC5','#546E7A']},
+  {gen:'Generation VI — 2013',title:'Fairy Joins to Balance Dragons',desc:'X and Y introduced Fairy type after Dragon Pokémon dominated competitive play for 14+ years. Fairy became immune to Dragon, super effective against Dragon, Dark, and Fighting, and countered by Poison and Steel — referencing Celtic folklore where iron repels fairies. This was the most significant rebalancing since Gen II.',types:['Fairy'],colors:['#F8BBD9']},
+  {gen:'Generation VI Revision — 2013',title:'Ghost & Dark Adjustments',desc:'Ghost type lost its resistance to Poison and Bug. Dark\'s resistances were also adjusted. Steel type lost its resistance to Ghost and Dark, making it slightly less dominant. These smaller revisions refined the chart without adding new types.',types:['Ghost','Steel','Dark'],colors:['#7986CB','#B0BEC5','#546E7A']},
+];
+
+// ═══════════════════════════════════════════════════════════
+// CURSOR
+// ═══════════════════════════════════════════════════════════
+const cursor = document.getElementById('cursor');
+const ring = document.getElementById('cursorRing');
+let mx=0,my=0,rx=0,ry=0;
+document.addEventListener('mousemove',e=>{mx=e.clientX;my=e.clientY;cursor.style.left=mx+'px';cursor.style.top=my+'px';});
+function animRing(){rx+=(mx-rx)*0.12;ry+=(my-ry)*0.12;ring.style.left=rx+'px';ring.style.top=ry+'px';requestAnimationFrame(animRing);}
+animRing();
+
+// ═══════════════════════════════════════════════════════════
+// PARTICLES
+// ═══════════════════════════════════════════════════════════
+const pContainer = document.getElementById('particles');
+const pColors = ['#FFD54F','#7C4DFF','#4FC3F7','#FF6B35','#66BB6A','#F48FB1'];
+for(let i=0;i<30;i++){
+  const p = document.createElement('div');
+  p.className = 'particle';
+  const size = Math.random()*4+2;
+  p.style.cssText = `width:${size}px;height:${size}px;background:${pColors[Math.floor(Math.random()*pColors.length)]};opacity:0.3;left:${Math.random()*100}%;animation-duration:${Math.random()*15+10}s;animation-delay:${Math.random()*15}s;`;
+  pContainer.appendChild(p);
+}
+
+// ═══════════════════════════════════════════════════════════
+// LOADER
+// ═══════════════════════════════════════════════════════════
+window.addEventListener('load',()=>{
+  setTimeout(()=>{
+    const loader = document.getElementById('loader');
+    loader.style.opacity = '0';
+    setTimeout(()=>loader.style.display='none',800);
+  },1200);
+});
+
+// ═══════════════════════════════════════════════════════════
+// SCROLL REVEAL
+// ═══════════════════════════════════════════════════════════
+const ro = new IntersectionObserver((entries)=>{
+  entries.forEach(e=>{if(e.isIntersecting){e.target.classList.add('visible');}});
+},{threshold:0.1});
+document.querySelectorAll('.reveal').forEach(el=>ro.observe(el));
+
+// ═══════════════════════════════════════════════════════════
+// TYPE GRID
+// ═══════════════════════════════════════════════════════════
+const typeGrid = document.getElementById('typeGrid');
+let activeType = null;
+
+function renderTypeGrid(filter=''){
+  typeGrid.innerHTML='';
+  TYPES.filter(t=>t.name.toLowerCase().includes(filter.toLowerCase())).forEach(t=>{
+    const card = document.createElement('div');
+    card.className = 'type-card' + (activeType===t.name?' active':'');
+    card.style.setProperty('--type-color',t.color);
+    card.innerHTML = `<span class="type-emoji">${t.emoji}</span><div class="type-name">${t.name}</div>`;
+    card.addEventListener('click',()=>{
+      activeType = activeType===t.name?null:t.name;
+      renderTypeGrid(filter);
+      renderTypeDetail(activeType?t:null);
+      if(activeType) document.getElementById('type-detail').scrollIntoView({behavior:'smooth',block:'nearest'});
+    });
+    typeGrid.appendChild(card);
+  });
+}
+
+function renderTypeDetail(t){
+  const panel = document.getElementById('type-detail');
+  if(!t){panel.style.display='none';return;}
+  panel.style.display='block';
+  panel.style.setProperty('--active-color',t.color);
+  const pokemonStr = t.pokemon.map(p=>`<span class="chip" style="border-color:${t.color}33;color:${t.color};">${p}</span>`).join('');
+  const strongStr = t.strong.map(s=>`<span class="chip strong">${s}</span>`).join('')||'<span style="color:var(--muted)">None</span>';
+  const weakStr = t.weak.map(s=>`<span class="chip weak">${s}</span>`).join('')||'<span style="color:var(--muted)">None</span>';
+  const immuneStr = t.immune.map(s=>`<span class="chip immune">${s}</span>`).join('')||'<span style="color:var(--muted)">None</span>';
+  panel.innerHTML = `
+    <div class="detail-header">
+      <div class="detail-icon">${t.emoji}</div>
+      <div class="detail-info">
+        <h2>${t.name} Type</h2>
+        <p>${t.origin}</p>
+      </div>
+    </div>
+    <div class="detail-grid">
+      <div class="detail-box">
+        <h3>📖 Lore & Origin</h3>
+        <p class="lore-text">${t.lore}</p>
+      </div>
+      <div class="detail-box">
+        <h3>🔬 Scientific Reasoning</h3>
+        <p class="lore-text">${t.sciReason}</p>
+        <br/>
+        <h3 style="margin-top:1rem;">✊ Super Effective Against</h3>
+        <div class="matchup-chips">${strongStr}</div>
+        <h3 style="margin-top:1rem;">😰 Weak To (as attacker)</h3>
+        <div class="matchup-chips">${weakStr}</div>
+        <h3 style="margin-top:1rem;">🛡️ Immune (as defender)</h3>
+        <div class="matchup-chips">${immuneStr}</div>
+      </div>
+    </div>
+    <div class="detail-box">
+      <h3>⭐ Famous Pokémon</h3>
+      <div class="matchup-chips">${pokemonStr}</div>
+    </div>
+  `;
+}
+
+renderTypeGrid();
+
+document.getElementById('typeSearch').addEventListener('input',e=>{
+  renderTypeGrid(e.target.value);
+});
+
+// ═══════════════════════════════════════════════════════════
+// BATTLE SIMULATOR
+// ═══════════════════════════════════════════════════════════
+const attackerSel = document.getElementById('attacker');
+const defenderSel = document.getElementById('defender');
+TYPES.forEach(t=>{
+  [attackerSel,defenderSel].forEach(sel=>{
+    const opt = document.createElement('option');
+    opt.value = t.name; opt.textContent = `${t.emoji} ${t.name}`;
+    sel.appendChild(opt);
+  });
+});
+
+function getEffLabel(val){
+  if(val===2) return {text:'2×',color:'#66BB6A',label:'Super Effective!'};
+  if(val===0.5) return {text:'½×',color:'#EF5350',label:'Not Very Effective...'};
+  if(val===0) return {text:'0×',color:'#777',label:'No Effect!'};
+  return {text:'1×',color:'var(--muted)',label:'Normal Effectiveness'};
+}
+
+function runSim(){
+  const atk = attackerSel.value;
+  const def = defenderSel.value;
+  if(!atk||!def) return;
+  const eff = rawChart[atk]?.[def]??1;
+  const {text,color,label} = getEffLabel(eff);
+  const loreKey = `${atk}-${def}`;
+  const lore = BATTLE_LORE[loreKey]||`${atk} attacks ${def} with ${eff===1?'normal':eff>1?'tremendous':'reduced'} effect — the elemental balance plays out as the type chart dictates.`;
+  const atkT = TYPES.find(t=>t.name===atk);
+  const defT = TYPES.find(t=>t.name===def);
+  document.getElementById('simResult').innerHTML = `
+    <div style="position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,${color}22,transparent 70%);pointer-events:none;"></div>
+    <div class="effectiveness-label">${atkT?.emoji||''} ${atk} → ${defT?.emoji||''} ${def}</div>
+    <div class="effectiveness-display" style="color:${color};">${text}</div>
+    <div class="effectiveness-label" style="color:${color};font-size:1rem;">${label}</div>
+    <p class="sim-explanation">${lore}</p>
+  `;
+}
+
+attackerSel.addEventListener('change',runSim);
+defenderSel.addEventListener('change',runSim);
+
+document.getElementById('randomBtn').addEventListener('click',()=>{
+  const r = ()=>TYPES[Math.floor(Math.random()*TYPES.length)].name;
+  attackerSel.value = r();
+  defenderSel.value = r();
+  runSim();
+});
+
+// ═══════════════════════════════════════════════════════════
+// TYPE MATRIX
+// ═══════════════════════════════════════════════════════════
+const matrix = document.getElementById('typeMatrix');
+const tooltip = document.getElementById('tooltip');
+const ttTitle = document.getElementById('tt-title');
+const ttBody = document.getElementById('tt-body');
+
+// Header row
+const headerRow = document.createElement('tr');
+headerRow.appendChild(document.createElement('th')); // empty corner
+TYPES.forEach(t=>{
+  const th = document.createElement('th');
+  th.style.color = t.color;
+  th.title = t.name;
+  th.textContent = t.name.slice(0,3).toUpperCase();
+  headerRow.appendChild(th);
+});
+matrix.appendChild(headerRow);
+
+// Data rows (defender = row, attacker = column)
+TYPES.forEach(def=>{
+  const row = document.createElement('tr');
+  const rowHeader = document.createElement('th');
+  rowHeader.style.color = def.color;
+  rowHeader.style.textAlign = 'right';
+  rowHeader.style.paddingRight = '0.5rem';
+  rowHeader.textContent = def.name.slice(0,3).toUpperCase();
+  row.appendChild(rowHeader);
+  TYPES.forEach(atk=>{
+    const eff = rawChart[atk.name]?.[def.name]??1;
+    const td = document.createElement('td');
+    if(eff===2){td.className='eff-2';td.textContent='2';}
+    else if(eff===0.5){td.className='eff-0_5';td.textContent='½';}
+    else if(eff===0){td.className='eff-0';td.textContent='✕';}
+    else{td.className='eff-1';td.textContent='';}
+    td.addEventListener('mouseenter',e=>{
+      const loreKey = `${atk.name}-${def.name}`;
+      const lore = BATTLE_LORE[loreKey];
+      const {text,label} = getEffLabel(eff);
+      ttTitle.textContent = `${atk.emoji} ${atk.name} vs ${def.emoji} ${def.name}: ${text} ${label}`;
+      ttBody.textContent = lore||`${atk.name} moves against ${def.name} at ${eff}× effectiveness.`;
+      tooltip.style.display='block';
+    });
+    td.addEventListener('mousemove',e=>{
+      tooltip.style.left=(e.clientX+16)+'px';
+      tooltip.style.top=(e.clientY-10)+'px';
+    });
+    td.addEventListener('mouseleave',()=>{tooltip.style.display='none';});
+    row.appendChild(td);
+  });
+  matrix.appendChild(row);
+});
+
+// ═══════════════════════════════════════════════════════════
+// MYTHOLOGY SECTION
+// ═══════════════════════════════════════════════════════════
+const mythGrid = document.getElementById('mythGrid');
+MYTHS.forEach(m=>{
+  const card = document.createElement('div');
+  card.className = 'myth-card reveal';
+  card.style.setProperty('--c1',m.c1);
+  card.style.setProperty('--c2',m.c2);
+  card.innerHTML = `<div class="myth-icon">${m.icon}</div><h3>${m.title}</h3><p>${m.text}</p>`;
+  mythGrid.appendChild(card);
+  ro.observe(card);
+});
+
+// ═══════════════════════════════════════════════════════════
+// TIMELINE
+// ═══════════════════════════════════════════════════════════
+const tlContainer = document.getElementById('tlContainer');
+TIMELINE.forEach(tl=>{
+  const item = document.createElement('div');
+  item.className = 'tl-item';
+  const badges = tl.types.map((t,i)=>`<span class="tl-badge" style="color:${tl.colors[i]};border-color:${tl.colors[i]}44;">${t}</span>`).join('');
+  item.innerHTML = `<div style="display:flex;flex-direction:column;align-items:center;padding-top:0.3rem;"><div class="tl-dot"></div><div style="flex:1;width:1px;background:var(--border);margin-top:8px;"></div></div><div class="tl-content"><div class="tl-gen">${tl.gen}</div><div class="tl-title">${tl.title}</div><div class="tl-desc">${tl.desc}</div><div class="tl-types">${badges}</div></div>`;
+  item.classList.add('reveal');
+  tlContainer.appendChild(item);
+  ro.observe(item);
+});
+
+// ═══════════════════════════════════════════════════════════
+// FUN FACTS
+// ═══════════════════════════════════════════════════════════
+const factsGrid = document.getElementById('factsGrid');
+FUN_FACTS.forEach((f,i)=>{
+  const card = document.createElement('div');
+  card.className = 'fact-card reveal';
+  card.innerHTML = `<div class="fact-num">${String(i+1).padStart(2,'0')}</div><div class="fact-text">${f}</div>`;
+  factsGrid.appendChild(card);
+  ro.observe(card);
+});
+
+// ═══════════════════════════════════════════════════════════
+// MUSIC TOGGLE (ambient oscillator)
+// ═══════════════════════════════════════════════════════════
+let audioCtx = null, gainNode = null, oscillators = [], musicOn = false;
+document.getElementById('musicToggle').addEventListener('click',function(){
+  if(!musicOn){
+    if(!audioCtx) {
+      audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+      gainNode = audioCtx.createGain();
+      gainNode.gain.setValueAtTime(0,audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.06,audioCtx.currentTime+2);
+      gainNode.connect(audioCtx.destination);
+      const freqs = [110,138.59,164.81,196,220];
+      freqs.forEach((f,i)=>{
+        const osc = audioCtx.createOscillator();
+        osc.type = i%2===0?'sine':'triangle';
+        osc.frequency.setValueAtTime(f,audioCtx.currentTime);
+        const lfo = audioCtx.createOscillator();
+        lfo.frequency.setValueAtTime(0.1+i*0.05,audioCtx.currentTime);
+        const lfoGain = audioCtx.createGain();
+        lfoGain.gain.setValueAtTime(2,audioCtx.currentTime);
+        lfo.connect(lfoGain);
+        lfoGain.connect(osc.frequency);
+        lfo.start();
+        osc.connect(gainNode);
+        osc.start();
+        oscillators.push(osc,lfo);
+      });
+    } else {
+      gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+      gainNode.gain.linearRampToValueAtTime(0.06,audioCtx.currentTime+2);
+    }
+    musicOn = true;
+    this.textContent = '♪ AMBIENCE ON';
+  } else {
+    gainNode.gain.cancelScheduledValues(audioCtx.currentTime);
+    gainNode.gain.linearRampToValueAtTime(0,audioCtx.currentTime+2);
+    musicOn = false;
+    this.textContent = '♪ AMBIENCE OFF';
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// TILT EFFECT on hover
+// ═══════════════════════════════════════════════════════════
+document.querySelectorAll('.myth-card').forEach(card=>{
+  card.addEventListener('mousemove',e=>{
+    const r = card.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width - 0.5;
+    const y = (e.clientY - r.top) / r.height - 0.5;
+    card.style.transform = `translateY(-4px) rotateX(${-y*8}deg) rotateY(${x*8}deg)`;
+  });
+  card.addEventListener('mouseleave',()=>{card.style.transform='';});
+});
+</script>
+</body>
+</html>
